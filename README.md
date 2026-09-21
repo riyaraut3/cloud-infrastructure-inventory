@@ -1,59 +1,71 @@
-# InfraStock — Cloud Infrastructure Inventory Management
+# InfraStock | Cloud Infrastructure Inventory Management
 
-An end-to-end **portfolio demonstration** of a data-center-parts inventory system, built to demonstrate requirements analysis, API design, cloud architecture, security boundaries, and operational tradeoffs for an entry-level AWS Solutions Architect interview.
+InfraStock is a full-stack inventory management application for tracking data center components across sites. It combines validated CSV ingestion, a searchable parts catalog, site-level reporting, and reorder alerts with a containerized application stack and AWS infrastructure configuration.
 
-> **Status:** Local application and AWS Terraform *deployment blueprint*. No AWS account, domain, Cognito provider, or hosted deployment is included. Do not describe the AWS stack as deployed until you personally provision and verify it. All sample vendors, sites, and components are fictional.
+**Technology:** Python · FastAPI · PostgreSQL · React · TypeScript · Docker · Terraform · AWS
 
-## What it does
+## Features
 
-- Uploads synthetic CSV inventory for data center sites, validating all rows before writes.
-- Stores original uploads by SHA-256 digest (local Docker volume or private S3 on AWS).
-- Upserts parts identified by `(sku, site)` in PostgreSQL; repeat identical uploads are idempotent.
-- Searches by SKU, filters by site and low-stock status, and paginates inventory.
-- Shows per-site inventory totals, estimated value, and reorder alerts.
-- Exports a low-stock CSV with spreadsheet-formula escaping.
-
-**Scope:** Single-tenant portfolio demonstration, not a procurement or financial-reporting system. Imports are inventory snapshots, not a stock-movement ledger. See [limitations](docs/operations.md).
+- **Inventory imports:** Validate CSV files and update inventory by unique SKU/site pair.
+- **Idempotent ingestion:** Detect repeated uploads using SHA-256 file hashes.
+- **Inventory visibility:** Search parts by SKU, filter by location, and paginate results.
+- **Reorder monitoring:** Identify components at or below their site-specific reorder threshold.
+- **Reporting:** View inventory quantities and values by site and export low-stock records.
+- **Source-file storage:** Save original CSVs to a local volume or an S3 bucket, depending on configuration.
 
 ## Architecture
 
 ```mermaid
-flowchart LR
-  Browser[React / TypeScript UI] --> FastAPI[FastAPI inventory API]
-  FastAPI --> PG[(PostgreSQL)]
-  FastAPI --> Uploads[(Local uploads / private S3)]
-  Gateway[API Gateway HTTP API + JWT] --> Lambda[Containerized Lambda + Mangum]
-  Lambda --> RDS[(Private RDS PostgreSQL)]
-  Lambda --> S3[(Private S3)]
-  Lambda --> Logs[CloudWatch]
-  Lambda --> Secrets[Secrets Manager]
+flowchart TB
+  UI[React + TypeScript dashboard] --> API[FastAPI inventory API]
+  API --> DB[(PostgreSQL)]
+  API --> STORE[Original CSV storage]
+  subgraph AWS infrastructure configuration
+    GW[API Gateway + JWT authorization] --> FN[Lambda container]
+    FN --> RDS[(Private RDS PostgreSQL)]
+    FN --> S3[(Private S3 bucket)]
+    FN --> CW[CloudWatch]
+    FN --> SM[Secrets Manager]
+  end
 ```
 
-In local mode the React UI connects to a Dockerized FastAPI service and PostgreSQL. The Terraform blueprint runs the same backend as a Lambda container behind JWT-protected API Gateway routes. The Terraform configuration does **not** provision hosted frontend authentication or web hosting.
+**Local environment:** Docker Compose runs the React frontend, FastAPI backend, and PostgreSQL. Original uploaded files are stored in a named Docker volume.
 
-**Stack:** Python 3.12, FastAPI, SQLAlchemy, PostgreSQL, React 18, TypeScript, Docker Compose, AWS Lambda, API Gateway, ECR, RDS, S3, IAM, Secrets Manager, CloudWatch, and Terraform.
+**AWS configuration:** Terraform defines a containerized Lambda backend behind JWT-protected API Gateway routes, private RDS PostgreSQL, an S3 upload bucket, IAM permissions, VPC networking, and CloudWatch logging. Deployment requires an AWS account, container image, and an existing OIDC identity provider; see the [deployment guide](docs/deployment.md).
 
-## Start locally
+## Run locally
 
-Requires Docker Desktop / Docker Engine with Compose; no AWS account or AWS credentials are needed to run the local demo.
+Requires Docker with Docker Compose.
 
 ```bash
+git clone https://github.com/riyaraut3/cloud-infrastructure-inventory.git
+cd cloud-infrastructure-inventory
 cp .env.example .env
-# Replace API_KEY in .env with your own local development key.
+# Set a unique API_KEY in .env
 docker compose up --build
 ```
 
-Open **http://localhost:5173**, enter the local `API_KEY` from `.env`, and import `sample-data/inventory.csv`. The inventory dashboard will show site distribution, totals, and low-stock alerts. FastAPI's interactive local API documentation is at **http://localhost:8000/docs**.
+Open **http://localhost:5173**, enter the API key configured in `.env`, and import `sample-data/inventory.csv`. The local FastAPI documentation is available at **http://localhost:8000/docs**.
+
+To stop the application:
 
 ```bash
 docker compose down
-# Optional: delete local database and uploaded files permanently:
-docker compose down -v
 ```
 
-The UI/API bind to `127.0.0.1` in local development. PostgreSQL is accessible only within the Compose network.
+## API
 
-## Tests and frontend build
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/inventory/imports` | Validate and import an inventory CSV |
+| `GET` | `/api/parts` | Search and filter inventory |
+| `GET` | `/api/reports/summary` | Retrieve aggregate metrics and site-level reports |
+| `GET` | `/api/reports/low-stock.csv` | Export low-stock items |
+| `GET` | `/api/health` | Check API availability |
+
+Local API requests use the `X-API-Key` header. The AWS configuration uses an API Gateway JWT authorizer. See the [API documentation](docs/api.md) for request parameters, CSV format, and response examples.
+
+## Tests and build
 
 ```bash
 cd backend
@@ -64,45 +76,26 @@ npm install
 npm run build
 ```
 
-The GitHub Actions workflow runs the backend test suite and frontend build. It does not deploy AWS resources.
+GitHub Actions runs the backend tests and frontend build on each push and pull request.
 
-## Example API requests
-
-```bash
-export API_KEY='replace-with-your-local-key'
-curl -H "X-API-Key: $API_KEY" http://localhost:8000/api/parts
-curl -H "X-API-Key: $API_KEY" -F "file=@sample-data/inventory.csv" \
-  http://localhost:8000/api/inventory/imports
-curl -H "X-API-Key: $API_KEY" http://localhost:8000/api/reports/summary
-curl -H "X-API-Key: $API_KEY" -o low-stock.csv \
-  http://localhost:8000/api/reports/low-stock.csv
-```
-
-## Repository layout
+## Project structure
 
 ```text
-backend/                  FastAPI, database models, imports, tests, storage adapter
-frontend/                 React / TypeScript dashboard
-infra/                    AWS Terraform deployment blueprint
-docs/                     Architecture, API, security, deployment, operations, demo
-sample-data/              Synthetic infrastructure inventory CSV
-.github/workflows/         Backend tests and frontend build
+backend/              FastAPI service, database models, CSV ingestion, tests
+frontend/             React + TypeScript dashboard
+infra/                AWS Terraform infrastructure
+docs/                 Architecture, API, deployment, security, operations
+sample-data/          Synthetic inventory CSV
+.github/workflows/     Continuous integration
 ```
 
-## Technical documentation
+## Documentation
 
-- [API contract](docs/api.md)
-- [Architecture and design decisions](docs/architecture.md)
-- [Security and threat model](docs/security.md)
-- [AWS deployment instructions](docs/deployment.md)
-- [Operations, cost, and limitations](docs/operations.md)
-- [Interview demonstration walkthrough](docs/demo.md)
-- [GitHub publishing and updates](docs/publishing.md)
+- [System architecture and design decisions](docs/architecture.md)
+- [API reference](docs/api.md)
+- [AWS deployment guide](docs/deployment.md)
+- [Security considerations](docs/security.md)
+- [Operations and cost considerations](docs/operations.md)
+- [Application walkthrough](docs/demo.md)
 
-## AWS Solutions Architect interview discussion
-
-Explain why `(sku, site)` is the unique key, why PostgreSQL stores queryable inventory while S3 retains content-addressed input files, how duplicate-file detection works, and why the cloud blueprint separates API Gateway authentication, private RDS networking, IAM permissions, and secret management. Discuss NAT/RDS ongoing costs, availability tradeoffs, unimplemented hosted sign-in, and migration options for larger workloads.
-
-**Verification:** Demonstrate valid imports, duplicate no-ops, rejected invalid files, search, low-stock exports, and automated test results. Show AWS resource configuration or performance only after personally provisioning and verifying the deployment.
-
-No real Meta data or company documentation is used in this project.
+Sample site identifiers, inventory records, and suppliers are fictional.
