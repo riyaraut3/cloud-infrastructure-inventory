@@ -1,6 +1,6 @@
-# AWS deployment guide — requires your AWS account and OIDC provider
+# AWS deployment guide
 
-> This repo does **not** auto-deploy or claim a running AWS environment. The cloud deployment incurs charges (notably RDS and NAT Gateway) and requires explicit action in your own account. Read [operations](operations.md) and [security](security.md) before running these commands.
+This guide provisions the infrastructure defined in `infra/` in your AWS account. RDS and NAT Gateway incur charges; review [operations](operations.md) and [security](security.md) before applying the configuration.
 
 ## Prerequisites
 
@@ -16,7 +16,7 @@ terraform apply -target=aws_ecr_repository.api
 terraform output -raw ecr_repository_url
 ```
 
-Targeted apply is used **only as a bootstrap** for the container registry. Review the full plan before proceeding; do not mistake a successful ECR bootstrap for a working deployment.
+Targeted apply bootstraps the container registry. Review the full Terraform plan before deploying the remaining resources.
 
 ## 2. Build and push the Lambda image
 
@@ -56,7 +56,7 @@ curl -H "Authorization: Bearer ${JWT}" "$API_URL/api/health"
 curl -H "Authorization: Bearer ${JWT}" -F "file=@sample-data/inventory.csv" "$API_URL/api/inventory/imports"
 ```
 
-For browser development, set `VITE_API_BASE_URL` to the output API endpoint and `VITE_AUTH_MODE=bearer`, then run the frontend. The UI accepts a manually obtained JWT in memory. **This is not a finished production web sign-in experience**; to offer public users an actual hosted application, implement Cognito authorization-code-with-PKCE sign-in, serve the compiled frontend over HTTPS (for example, CloudFront + S3), and update `allowed_origin` to match the hosted domain.
+For browser development, set `VITE_API_BASE_URL` to the output API endpoint and `VITE_AUTH_MODE=bearer`, then run the frontend. The UI accepts a manually obtained JWT in memory. For hosted access, integrate Cognito authorization-code-with-PKCE sign-in, serve the compiled frontend over HTTPS (for example, CloudFront + S3), and update `allowed_origin` to match the hosted domain.
 
 ## 5. Confirm, document, and remove
 
