@@ -14,15 +14,15 @@ Original CSVs are written under a content-addressed `imports/<sha256>.csv` key, 
 
 ## Decision record 003: Idempotent bulk upsert
 
-A repeated byte-identical upload is a no-op. New content applies the entire valid CSV, updating matching `(sku, site)` records and inserting missing ones. Every row is validated before any writes. The import transaction and unique constraint detect concurrent duplicate imports; a 409 response instructs the caller to retry. The demo uses row-level selects and ORM upserts; for large datasets, prefer a staging table and `INSERT ... ON CONFLICT DO UPDATE` within a properly isolated transaction. A changed file *overwrites* current quantities, so this is a snapshot import, not incrementing stock movement.
+A repeated byte-identical upload is a no-op. New content applies the entire valid CSV, updating matching `(sku, site)` records and inserting missing ones. Every row is validated before any writes. The import transaction and unique constraint detect concurrent duplicate imports; a 409 response instructs the caller to retry. The importer uses row-level selects and ORM upserts. For larger datasets, a staging table and `INSERT ... ON CONFLICT DO UPDATE` would improve throughput. A changed file *overwrites* current quantities, so this is a snapshot import, not incrementing stock movement.
 
 ## Decision record 004: Cloud Lambda and private RDS
 
-The API is containerized for local and Lambda operation. The Lambda image includes Mangum, an ASGI adapter for API Gateway. The Terraform blueprint puts Lambda and RDS in private subnets across two availability zones, with one NAT Gateway for outbound access to S3/Secrets Manager and PostgreSQL connectivity inside the VPC. This demo NAT layout is a single-AZ failure point for outbound connectivity. Production alternatives include VPC service endpoints, highly available NAT, RDS Proxy, and scheduled migration jobs. An early-stage or low-budget prototype might be substantially cheaper with a single small always-on instance and managed Postgres.
+The API is containerized for local and Lambda operation. The Lambda image includes Mangum, an ASGI adapter for API Gateway. The Terraform blueprint puts Lambda and RDS in private subnets across two availability zones, with one NAT Gateway for outbound access to S3/Secrets Manager and PostgreSQL connectivity inside the VPC. The single NAT Gateway introduces a single-AZ dependency for outbound connectivity. Production alternatives include VPC service endpoints, highly available NAT, RDS Proxy, and scheduled migration jobs. An early-stage or low-budget prototype might be substantially cheaper with a single small always-on instance and managed Postgres.
 
 ## Decision record 005: Narrow trust boundary
 
-Local auth is a developer-chosen `X-API-Key` checked in the FastAPI app. That is unsuitable for a public/browser deployment. In AWS, every route is behind API Gateway's JWT authorizer, and `AUTH_MODE=apigw_jwt` indicates that gateway auth is required. API Gateway is configured to invoke Lambda but there is no Lambda function URL. The blueprint requires the operator to supply an existing OIDC issuer and audience; it does not silently provision public unauthenticated endpoints. Local frontend can alternatively send a bearer token but does not implement the complete hosted sign-in flow.
+Local auth is a developer-chosen `X-API-Key` checked in the FastAPI app. That is unsuitable for a public/browser deployment. In AWS, every route is behind API Gateway's JWT authorizer, and `AUTH_MODE=apigw_jwt` indicates that gateway auth is required. API Gateway is configured to invoke Lambda but there is no Lambda function URL. The blueprint requires the operator to supply an existing OIDC issuer and audience; it does not silently provision public unauthenticated endpoints. The frontend accepts manually supplied bearer tokens; hosted sign-in requires separate identity-provider integration.
 
 ## Data movement
 
@@ -49,6 +49,6 @@ sequenceDiagram
   API-->>UI: Summary and paginated rows
 ```
 
-## Extensions to propose (not implemented)
+## Future enhancements
 
-Add migrations/Alembic, Cognito hosted login and CloudFront/S3 frontend hosting, SQS-based ingest, RDS Proxy, observability alarms, and structured audit history. Do not describe these as completed features.
+Potential additions include managed schema migrations with Alembic, Cognito-hosted sign-in, CloudFront/S3 frontend hosting, SQS-based ingestion, RDS Proxy, observability alarms, and structured audit history.
