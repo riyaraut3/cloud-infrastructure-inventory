@@ -1,0 +1,8 @@
+aws_region       = "us-east-1"
+project          = "infrastock"
+environment      = "dev"
+allowed_origin   = "http://localhost:5173"
+# In the second apply, set these after pushing your Lambda image and configuring an OIDC provider:
+# lambda_image_uri = "123456789012.dkr.ecr.us-east-1.amazonaws.com/infrastock-dev-api@sha256:..."
+# jwt_issuer       = "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_XXXX"
+# jwt_audience     = "your-cognito-app-client-id"

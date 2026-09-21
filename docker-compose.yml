@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: inventory
+      POSTGRES_USER: inventory
+      POSTGRES_PASSWORD: inventory_local_only
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U inventory -d inventory"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # No published database port: only other containers can reach Postgres.
+  api:
+    build: ./backend
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - upload_data:/data/uploads
+  web:
+    build: ./frontend
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000
+      VITE_AUTH_MODE: api_key
+    depends_on: [api]
+    ports:
+      - "127.0.0.1:5173:5173"
+volumes:
+  postgres_data:
+  upload_data:

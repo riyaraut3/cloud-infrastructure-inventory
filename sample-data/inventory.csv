@@ -1,0 +1,11 @@
+sku,name,site,supplier,quantity,reorder_level,unit_cost
+FBR-SM-001,Single-mode fiber cable 10m,VA-01,Northstar Optics,120,40,22.50
+TRX-100G-002,100G optical transceiver,VA-01,Example Photonics,11,20,310.00
+SW-48P-003,48-port access switch,VA-01,Example Networks,8,4,1890.00
+RCK-42U-004,42U server rack,NY-02,Demo Infrastructure,12,6,820.00
+FBR-MM-005,Multimode fiber cable 5m,NY-02,Northstar Optics,16,30,14.90
+PCH-24P-006,24-port patch panel,NY-02,Demo Infrastructure,70,20,83.00
+PWR-PSU-007,Server power supply,TX-03,Demo Power,10,12,260.00
+TRX-400G-008,400G optical transceiver,TX-03,Example Photonics,34,18,930.00
+SW-32P-009,32-port aggregation switch,TX-03,Example Networks,5,5,3210.00
+FBR-SM-010,Single-mode fiber cable 25m,TX-03,Northstar Optics,210,70,41.75
