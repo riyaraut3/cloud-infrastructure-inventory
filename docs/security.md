@@ -1,6 +1,6 @@
 # Threat model and security considerations
 
-**Use synthetic data only.** This portfolio demonstration is not authorized for proprietary infrastructure, real inventory, purchasing records, personal data, or production AWS workloads.
+**Data handling:** Sample files use fictional site, supplier, and inventory information. Do not upload proprietary infrastructure, purchasing records, personal data, or production credentials to a public repository.
 
 | Threat | Current mitigation | Production follow-up |
 |---|---|---|
@@ -17,4 +17,4 @@
 
 The cloud template grants Lambda S3 `PutObject` limited to `imports/*`, and Secrets Manager `GetSecretValue` for the specific managed RDS secret. The AWS-managed VPC execution policy grants network-interface and basic log permissions. Production should tighten general egress and remove use of the RDS master account.
 
-**Important limitations:** API-key rotation, per-user authorization, audit trails, CSRF-specific browser hosting settings, and frontend sign-in are not implemented. This is not a production-security certification.
+**Deployment considerations:** A public-facing application also requires identity-provider integration, per-user authorization, credential rotation, audit logging, browser security configuration, and production security review.
